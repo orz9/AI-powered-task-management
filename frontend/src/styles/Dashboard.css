@@ -1,0 +1,124 @@
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+  }
+  
+  .dashboard-header {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .dashboard-header h1 {
+    margin-bottom: var(--spacing-xs);
+    color: var(--dark-text);
+  }
+  
+  .dashboard-header p {
+    color: var(--medium-text);
+    margin-bottom: 0;
+  }
+  
+  .dashboard-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+  
+  @media (min-width: 992px) {
+    .dashboard-content {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+  
+  .dashboard-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .dashboard-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .dashboard-section {
+    background-color: var(--background-light);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .dashboard-section h2 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+    font-size: 1.25rem;
+    color: var(--dark-text);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  /* AI Tools Tabs */
+  .ai-tools-tabs {
+    margin-top: var(--spacing-md);
+  }
+  
+  .tab-header {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .tab-button {
+    background: none;
+    border: none;
+    color: var(--medium-text);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.875rem;
+    cursor: pointer;
+    position: relative;
+    transition: color var(--transition-normal);
+  }
+  
+  .tab-button:hover {
+    color: var(--primary-color);
+    background: none;
+  }
+  
+  .tab-button.active {
+    color: var(--primary-color);
+    font-weight: 500;
+  }
+  
+  .tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary-color);
+  }
+  
+  .tab-content {
+    padding: var(--spacing-sm) 0;
+  }
+  
+  /* Quick Task Creation Section */
+  .quick-create-section .create-task-form-container {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .dashboard-section {
+      padding: var(--spacing-md);
+    }
+    
+    .dashboard-header {
+      margin-bottom: var(--spacing-md);
+    }
+  }
+  
