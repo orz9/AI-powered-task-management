@@ -1,0 +1,78 @@
+ai-task-management-system/
+├── README.md
+├── backend/
+│   ├── ai_integration/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── openai_client.py  # Implementation from ai-integration.py
+│   │   ├── services.py       # Implementation from ai-services.py
+│   │   ├── tests.py
+│   │   ├── urls.py           # Implementation from ai-urls.py
+│   │   └── views.py          # Implementation from ai-views.py
+│   ├── manage.py
+│   ├── people/
+│   │   ├── __init__.py
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations/
+│   │   │   └── __init__.py
+│   │   ├── models.py
+│   │   ├── permissions.py    # Implementation from django-permissions.py
+│   │   ├── serializers.py    # Part of django-serializers.py
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   └── views.py          # Part of django-views-apis.py
+│   ├── project/
+│   │   ├── __init__.py
+│   │   ├── asgi.py
+│   │   ├── settings.py
+│   │   ├── urls.py           # Main URLs file combining app URLs
+│   │   └── wsgi.py
+│   ├── requirements.txt
+│   └── tasks/
+│       ├── __init__.py
+│       ├── admin.py
+│       ├── apps.py
+│       ├── migrations/
+│       │   └── __init__.py
+│       ├── models.py         # Implementation from django-models.py for Task models
+│       ├── serializers.py    # Part of django-serializers.py for Task models
+│       ├── tests.py
+│       ├── urls.py           # Part of django-urls.py for Task endpoints
+│       └── views.py          # Part of django-views-apis.py for Task endpoints
+├── frontend/
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public/
+│   │   ├── favicon.ico
+│   │   ├── index.html
+│   │   ├── manifest.json
+│   │   └── robots.txt
+│   └── src/
+│       ├── App.js            # Implementation from app-component.js
+│       ├── api/
+│       │   ├── aiApi.js      # Part of api-integration.js for AI endpoints
+│       │   └── taskApi.js    # Part of api-integration.js for Task endpoints
+│       ├── components/
+│       │   ├── AudioRecorder.js    # Implementation from audio-recorder-component.txt
+│       │   ├── CreateTaskForm.js   # Implementation from create-task-form.js
+│       │   ├── Dashboard.js        # Implementation from dashboard-component-updated.js
+│       │   ├── Login.js            # Implementation from login-component.js
+│       │   ├── Navigation.js       # Implementation from navigation-component.js
+│       │   ├── PeopleList.js       # Implementation from people-list-component.js
+│       │   ├── Statistics.js       # Implementation from statistics-component.js
+│       │   ├── TaskList.js         # Implementation from task-list-component.js
+│       │   └── TaskPrediction.js   # Implementation from task-prediction-component.js
+│       ├── context/
+│       │   └── AuthContext.js      # Implementation from auth-context.js
+│       ├── index.js
+│       └── styles/
+│           ├── App.css             # Implementation from main-css.js
+│           ├── Dashboard.css       # Implementation from dashboard-css.js
+│           └── Navigation.css      # Implementation from navigation-css.js
+└── mongodb/
+    └── schema.js                   # Implementation from mongodb-schema.js
