@@ -106,15 +106,31 @@ export const AuthProvider = ({ children }) => {
       console.error('Registration error:', err);
       
       if (err.response?.data) {
-        // Format validation errors
-        const errors = err.response.data;
-        let errorMessage = '';
+        // Handle structured error response
+        const errorData = err.response.data;
         
-        for (const key in errors) {
-          errorMessage += `${key}: ${errors[key].join(', ')}\n`;
+        if (typeof errorData === 'object' && errorData !== null) {
+          if (errorData.error) {
+            // Single error message
+            setError(errorData.error);
+          } else {
+            // Format validation errors - handle both array and string formats
+            let errorMessage = '';
+            
+            for (const key in errorData) {
+              const value = errorData[key];
+              if (Array.isArray(value)) {
+                errorMessage += `${key}: ${value.join(', ')}\n`;
+              } else if (typeof value === 'string') {
+                errorMessage += `${key}: ${value}\n`;
+              }
+            }
+            
+            setError(errorMessage || 'Registration failed. Please try again.');
+          }
+        } else {
+          setError('Registration failed. Please try again.');
         }
-        
-        setError(errorMessage || 'Registration failed. Please try again.');
       } else {
         setError('Registration failed. Please try again.');
       }
@@ -123,8 +139,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
-
+};
   // Update user profile
   const updateProfile = async (profileData) => {
     setLoading(true);

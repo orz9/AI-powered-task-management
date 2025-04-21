@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Components
 import Login from './components/Login';
+import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import CreateTaskForm from './components/CreateTaskForm';
 import Navigation from './components/Navigation';
@@ -42,6 +43,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} /> {/* Add Register route */}
       <Route 
         path="/dashboard" 
         element={
@@ -92,7 +94,7 @@ const AppRoutes = () => {
         } 
       />
       <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="*" element={<div className="not-found">Page not found</div>} />
+      {/* <Route path="*" element={<div className="not-found">Page not found</div>} /> */}
     </Routes>
   );
 };

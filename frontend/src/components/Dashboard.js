@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fetchTasks, fetchPeople } from '../api/taskApi';
+import axios from 'axios';
 import TaskList from './TaskList';
 import PeopleList from './PeopleList';
 import AudioRecorder from './AudioRecorder';
 import TaskPrediction from './TaskPrediction';
 import Statistics from './Statistics';
 import CreateTaskForm from './CreateTaskForm';
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
 const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
@@ -57,8 +60,10 @@ const Dashboard = () => {
         setTasks(tasksData);
         
         // Leaders see all people, team members see only themselves and direct collaborators
-        const peopleData = await fetchPeople(currentUser.id, currentUser.role);
-        setPeople(peopleData);
+        const peopleResponse = await axios.get(`${API_BASE_URL}/api/people/`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        setPeople(peopleResponse.data);
         
         // Fetch teams
         await fetchTeams();
@@ -131,6 +136,7 @@ const Dashboard = () => {
               people={people} 
               teams={teams} 
               onTaskCreated={refreshTasks}
+              currentUser={currentUser}
             />
           </section>
           

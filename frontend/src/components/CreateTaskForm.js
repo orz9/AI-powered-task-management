@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { createTask } from '../api/taskApi';
 import { useAuth } from '../context/AuthContext';
 
-const CreateTaskForm = ({ people, teams, onTaskCreated }) => {
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
+const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
   const { currentUser } = useAuth();
+  const [people, setPeople] = useState(initialPeople || []);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -17,15 +21,56 @@ const CreateTaskForm = ({ people, teams, onTaskCreated }) => {
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Initialize form with current user as default assignee
+  // Fetch people directly from API
   useEffect(() => {
-    if (currentUser) {
-      setFormData(prev => ({
-        ...prev,
-        assignedTo: currentUser.id
-      }));
-    }
+    const fetchPeople = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // First try to get people from API
+        const response = await axios.get(`${API_BASE_URL}/api/people/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log("People data from API:", response.data);
+          setPeople(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching people:', err);
+        
+        // If API fails, at least add current user
+        if (currentUser) {
+          const currentUserPerson = {
+            id: currentUser.id,
+            name: currentUser.name || currentUser.username || 'Current User',
+            role: currentUser.role
+          };
+          console.log("Adding current user as fallback:", currentUserPerson);
+          setPeople([currentUserPerson]);
+        }
+      }
+    };
+
+    fetchPeople();
   }, [currentUser]);
+
+  // Set current user as assignee when currentUser or people changes
+  useEffect(() => {
+    if (currentUser && currentUser.id && people.length > 0) {
+      // Find the current user in people list
+      const currentUserInList = people.find(person => 
+        person.id === currentUser.id || 
+        person.email === currentUser.email
+      );
+      
+      if (currentUserInList) {
+        setFormData(prev => ({
+          ...prev,
+          assignedTo: currentUserInList.id
+        }));
+      }
+    }
+  }, [currentUser, people]);
 
   // Handle form input changes
   const handleChange = (e) => {
@@ -120,11 +165,15 @@ const CreateTaskForm = ({ people, teams, onTaskCreated }) => {
               required
             >
               <option value="">Select a person</option>
-              {people?.map(person => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
+              {people && people.length > 0 ? (
+                people.map(person => (
+                  <option key={person.id} value={person.id}>
+                    {person.name || person.username}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>No people available</option>
+              )}
             </select>
           </div>
           

@@ -1066,6 +1066,34 @@
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-sm);
   }
+
+  .input-error {
+    border-color: var(--error-color) !important;
+  }
+  
+  .field-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin-top: 4px;
+  }
+  
+  /* These styles already exist but ensure they're there for the auth forms */
+  .auth-error {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .auth-form .form-row {
+    display: flex;
+    gap: var(--spacing-md);
+  }
+  
+  .auth-form .form-row .form-group {
+    flex: 1;
+  }
   
   /* Responsive Adjustments */
   @media (max-width: 768px) {

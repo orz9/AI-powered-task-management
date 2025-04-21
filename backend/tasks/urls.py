@@ -5,15 +5,13 @@ from .views import (
     TaskCategoryViewSet, SecurityLevelViewSet
 )
 
-# Create a router and register our viewsets
+# Create a router and register our viewsets with explicit basenames
 router = DefaultRouter()
-router.register(r'tasks', TaskViewSet)
-router.register(r'comments', CommentViewSet)
-router.register(r'attachments', AttachmentViewSet)
-router.register(r'categories', TaskCategoryViewSet)
-router.register(r'security-levels', SecurityLevelViewSet)
+router.register(r'tasks', TaskViewSet, basename='task')
+router.register(r'comments', CommentViewSet, basename='comment')
+router.register(r'attachments', AttachmentViewSet, basename='attachment')
+router.register(r'categories', TaskCategoryViewSet, basename='category')
+router.register(r'security-levels', SecurityLevelViewSet, basename='security-level')
 
 # The API URLs are now determined automatically by the router
-urlpatterns = [
-    path('', include(router.urls)),
-]
+urlpatterns = router.urls

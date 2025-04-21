@@ -10,12 +10,35 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import pymongo
+import logging
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv()
+MONGODB_URI = os.environ.get('MONGODB_URI')
+MONGODB_DB_NAME = 'taskmanagement'
+
+# Connect to MongoDB with connection verification
+try:
+    MONGODB_CLIENT = pymongo.MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    MONGODB_CLIENT.server_info()
+    MONGODB_DB = MONGODB_CLIENT[MONGODB_DB_NAME]
+    logger.info(f"Successfully connected to MongoDB: {MONGODB_URI}")
+    print(f"Successfully connected to MongoDB: {MONGODB_URI}")
+except pymongo.errors.ServerSelectionTimeoutError as err:
+    logger.error(f"MongoDB connection error: {err}")
+    print(f"MongoDB connection error: {err}")
+    # Set to None so the application can still start even without MongoDB
+    MONGODB_CLIENT = None
+    MONGODB_DB = None
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -49,6 +72,7 @@ INSTALLED_APPS = [
     "ai_integration",
     "people",
     "tasks",
+    "project",
 ]
 
 MIDDLEWARE = [
@@ -60,6 +84,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'project.middleware.MongoDBConnectionMiddleware',
 ]
 
 ROOT_URLCONF = "project.urls"
@@ -87,18 +112,20 @@ WSGI_APPLICATION = "project.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        'ENGINE': 'djongo',
-        'NAME': 'ai_task_management',
-        'CLIENT': {
-            'host': os.environ.get('MONGODB_URI', 'mongodb://localhost:27017'),
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
 
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
+AUTHENTICATION_BACKENDS = [
+    'project.auth.MongoDBAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',  # Keep the default backend as fallback
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -165,3 +192,45 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
 # Custom user model
 AUTH_USER_MODEL = 'people.User'
+
+# Add logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'mongodb.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'project': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'ai_integration': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

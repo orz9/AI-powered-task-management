@@ -134,7 +134,7 @@ class OpenAIClient:
         for attempt in range(self.max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Or use "gpt-4" for better results
+                    model="gpt-4",  # Or use "gpt-4" for better results
                     response_format={"type": "json_object"},
                     messages=[
                         {"role": "system", "content": system_prompt},

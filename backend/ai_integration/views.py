@@ -1,12 +1,9 @@
-from django.shortcuts import render
-
-# Create your views here.
-
 import os
 import json
 import logging
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
+from bson import ObjectId
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -22,9 +19,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from .openai_client import OpenAIClient
-from tasks.models import Task
-from people.models import Person
-from ai_integration.models import AITrainingData
+from tasks.models import tasks_collection
+from people.models import MongoUser  # Updated to use MongoUser
+
+# Access MongoDB collections
+people_collection = settings.MONGODB_DB['people']
+ai_training_data_collection = settings.MONGODB_DB['ai_training_data']
 
 logger = logging.getLogger(__name__)
 
@@ -99,22 +99,37 @@ class ProcessAudioView(APIView):
     def _get_context_for_user(self, user_id):
         """Get relevant context for the given user to improve task extraction"""
         try:
+            # Convert user_id to ObjectId if it's a string
+            if isinstance(user_id, str):
+                try:
+                    user_id_obj = ObjectId(user_id)
+                except:
+                    logger.warning(f"Invalid user ID format: {user_id}")
+                    return {}
+            else:
+                user_id_obj = user_id
+                
             # Get the person associated with the user
-            person = Person.objects.get(userId=user_id)
+            person = people_collection.find_one({'userId': user_id_obj})
             
+            if not person:
+                logger.warning(f"Person not found for user {user_id}")
+                return {}
+                
             # Get colleagues/related people
-            related_people = Person.objects.filter(
-                organization=person.organization,
-            ).exclude(id=person.id)[:10]  # Limit to 10 people
+            related_people = list(people_collection.find({
+                'organization': person['organization'],
+                '_id': {'$ne': person['_id']}
+            }).limit(10))  # Limit to 10 people
             
             # Format context data
             context = {
                 'people': [
                     {
-                        'id': str(p.id),
-                        'name': p.name,
-                        'role': p.role
-                    } for p in [person] + list(related_people)
+                        'id': str(p['_id']),
+                        'name': p.get('name', ''),
+                        'role': p.get('role', '')
+                    } for p in [person] + related_people
                 ]
             }
             
@@ -122,9 +137,6 @@ class ProcessAudioView(APIView):
             # (Implementation depends on your project model)
             
             return context
-        except Person.DoesNotExist:
-            logger.warning(f"Person not found for user {user_id}")
-            return {}
         except Exception as e:
             logger.error(f"Error getting context: {str(e)}")
             return {}
@@ -132,28 +144,42 @@ class ProcessAudioView(APIView):
     def _process_extracted_tasks(self, extracted_tasks, user_id):
         """Process and format extracted tasks"""
         try:
+            # Convert user_id to ObjectId if it's a string
+            if isinstance(user_id, str):
+                try:
+                    user_id_obj = ObjectId(user_id)
+                except:
+                    logger.warning(f"Invalid user ID format: {user_id}")
+                    return extracted_tasks  # Return unprocessed tasks
+            else:
+                user_id_obj = user_id
+                
             # Get the person associated with the user
-            person = Person.objects.get(userId=user_id)
+            person = people_collection.find_one({'userId': user_id_obj})
             
+            if not person:
+                logger.warning(f"Person not found for user {user_id}")
+                return extracted_tasks  # Return unprocessed tasks
+                
             processed_tasks = []
             for task in extracted_tasks:
                 # Look up the assigned person by name if provided
                 assigned_to = None
                 if 'assigned_person' in task and task['assigned_person']:
                     try:
-                        assigned_person = Person.objects.filter(
-                            name__icontains=task['assigned_person'],
-                            organization=person.organization
-                        ).first()
+                        assigned_person = people_collection.find_one({
+                            'name': {'$regex': task['assigned_person'], '$options': 'i'},
+                            'organization': person['organization']
+                        })
                         
                         if assigned_person:
-                            assigned_to = str(assigned_person.id)
+                            assigned_to = str(assigned_person['_id'])
                     except Exception as e:
                         logger.error(f"Error looking up assigned person: {str(e)}")
                 
                 # Default to the current user if no assignee found
                 if not assigned_to:
-                    assigned_to = str(person.id)
+                    assigned_to = str(person['_id'])
                 
                 # Format the due date if provided
                 due_date = None
@@ -183,9 +209,6 @@ class ProcessAudioView(APIView):
             
             return processed_tasks
             
-        except Person.DoesNotExist:
-            logger.warning(f"Person not found for user {user_id}")
-            return extracted_tasks  # Return unprocessed tasks
         except Exception as e:
             logger.error(f"Error processing extracted tasks: {str(e)}")
             return extracted_tasks
@@ -193,13 +216,29 @@ class ProcessAudioView(APIView):
     def _store_training_data(self, user_id, data_type, data):
         """Store data for AI training and improvement"""
         try:
-            person = Person.objects.get(userId=user_id)
+            # Convert user_id to ObjectId if it's a string
+            if isinstance(user_id, str):
+                try:
+                    user_id_obj = ObjectId(user_id)
+                except:
+                    logger.warning(f"Invalid user ID format: {user_id}")
+                    return
+            else:
+                user_id_obj = user_id
+                
+            person = people_collection.find_one({'userId': user_id_obj})
             
-            AITrainingData.objects.create(
-                personId=person.id,
-                dataType=data_type,
-                data=data
-            )
+            if not person:
+                logger.warning(f"Person not found for user {user_id}")
+                return
+                
+            # Insert training data
+            ai_training_data_collection.insert_one({
+                'personId': person['_id'],
+                'dataType': data_type,
+                'data': data,
+                'createdAt': datetime.now()
+            })
         except Exception as e:
             logger.error(f"Error storing training data: {str(e)}")
 
@@ -222,30 +261,61 @@ class PredictTasksView(APIView):
             )
         
         try:
+            # Convert person_id to ObjectId
+            try:
+                person_id_obj = ObjectId(person_id)
+            except:
+                return Response(
+                    {"error": "Invalid person ID format"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
             # Get person data
-            person = Person.objects.get(id=person_id)
+            person = people_collection.find_one({'_id': person_id_obj})
+            
+            if not person:
+                return Response(
+                    {"error": "Person not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
             person_data = {
-                'id': str(person.id),
-                'name': person.name,
-                'role': person.role,
-                'skills': person.skills,
-                'teams': [{'_id': str(team.id), 'name': team.name} for team in person.teams.all()]
+                'id': str(person['_id']),
+                'name': person.get('name', ''),
+                'role': person.get('role', ''),
+                'skills': person.get('skills', []),
+                'teams': []
             }
+            
+            # Get teams for the person
+            if 'teams' in person:
+                team_ids = person['teams']
+                teams = []
+                for team_id in team_ids:
+                    team = settings.MONGODB_DB['teams'].find_one({'_id': team_id})
+                    if team:
+                        teams.append({
+                            '_id': str(team['_id']),
+                            'name': team.get('name', '')
+                        })
+                person_data['teams'] = teams
             
             # Get historical task data
             historical_tasks = []
-            tasks = Task.objects.filter(assignedTo=person_id).order_by('-createdAt')[:50]
+            tasks = list(tasks_collection.find(
+                {'assignedTo': person_id_obj}
+            ).sort('createdAt', -1).limit(50))
             
             for task in tasks:
                 task_data = {
-                    'id': str(task.id),
-                    'title': task.title,
-                    'description': task.description,
-                    'status': task.status,
-                    'priority': task.priority,
-                    'dueDate': task.dueDate.strftime('%Y-%m-%d') if task.dueDate else None,
-                    'createdAt': task.createdAt.strftime('%Y-%m-%d'),
-                    'completedAt': task.completedAt.strftime('%Y-%m-%d') if task.completedAt else None
+                    'id': str(task['_id']),
+                    'title': task.get('title', ''),
+                    'description': task.get('description', ''),
+                    'status': task.get('status', ''),
+                    'priority': task.get('priority', ''),
+                    'dueDate': task.get('dueDate', '').strftime('%Y-%m-%d') if 'dueDate' in task and task['dueDate'] else None,
+                    'createdAt': task.get('createdAt', '').strftime('%Y-%m-%d') if 'createdAt' in task and task['createdAt'] else None,
+                    'completedAt': task.get('completedAt', '').strftime('%Y-%m-%d') if 'completedAt' in task and task['completedAt'] else None
                 }
                 historical_tasks.append(task_data)
             
@@ -262,7 +332,7 @@ class PredictTasksView(APIView):
                     'dueDate': task.get('due_date') or task.get('dueDate'),
                     'priority': task.get('priority', 'medium').lower(),
                     'confidence': task.get('confidence', 0.7),
-                    'assignedTo': str(person.id),
+                    'assignedTo': str(person['_id']),
                     'aiGenerated': True
                 }
                 processed_predictions.append(processed_task)
@@ -271,11 +341,6 @@ class PredictTasksView(APIView):
                 'predictedTasks': processed_predictions
             })
             
-        except Person.DoesNotExist:
-            return Response(
-                {"error": "Person not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
             logger.error(f"Error predicting tasks: {str(e)}")
             return Response(
@@ -307,24 +372,33 @@ class AnalyzeTasksView(APIView):
             start_date = now - timedelta(days=30)  # Default to month
         
         try:
+            # Convert person_id to ObjectId
+            try:
+                person_id_obj = ObjectId(person_id)
+            except:
+                return Response(
+                    {"error": "Invalid person ID format"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
             # Get tasks for the person within the timeframe
-            tasks = Task.objects.filter(
-                assignedTo=person_id,
-                createdAt__gte=start_date
-            ).order_by('-createdAt')
+            tasks = list(tasks_collection.find({
+                'assignedTo': person_id_obj,
+                'createdAt': {'$gte': start_date}
+            }).sort('createdAt', -1))
             
             # Convert tasks to dict format for analysis
             task_data = []
             for task in tasks:
                 task_dict = {
-                    'id': str(task.id),
-                    'title': task.title,
-                    'description': task.description,
-                    'status': task.status,
-                    'priority': task.priority,
-                    'dueDate': task.dueDate.strftime('%Y-%m-%d') if task.dueDate else None,
-                    'createdAt': task.createdAt.strftime('%Y-%m-%d'),
-                    'completedAt': task.completedAt.strftime('%Y-%m-%d') if task.completedAt else None
+                    'id': str(task['_id']),
+                    'title': task.get('title', ''),
+                    'description': task.get('description', ''),
+                    'status': task.get('status', ''),
+                    'priority': task.get('priority', ''),
+                    'dueDate': task.get('dueDate', '').strftime('%Y-%m-%d') if 'dueDate' in task and task['dueDate'] else None,
+                    'createdAt': task.get('createdAt', '').strftime('%Y-%m-%d') if 'createdAt' in task and task['createdAt'] else None,
+                    'completedAt': task.get('completedAt', '').strftime('%Y-%m-%d') if 'completedAt' in task and task['completedAt'] else None
                 }
                 task_data.append(task_dict)
             
@@ -365,41 +439,56 @@ class SaveExtractedTasksView(APIView):
             )
         
         try:
-            with transaction.atomic():
-                created_tasks = []
-                
-                for task_data in tasks_data:
-                    # Create new task
-                    task = Task.objects.create(
-                        title=task_data.get('title', 'Untitled Task'),
-                        description=task_data.get('description', ''),
-                        status='pending',
-                        priority=task_data.get('priority', 'medium'),
-                        assignedTo_id=task_data.get('assignedTo'),
-                        createdBy_id=request.user.person.id,
-                        organization_id=request.user.person.organization_id,
-                        source=task_data.get('source', 'transcription'),
-                        aiGenerated=task_data.get('aiGenerated', False)
+            created_tasks = []
+            
+            for task_data in tasks_data:
+                # Convert string IDs to ObjectId
+                if 'assignedTo' in task_data and task_data['assignedTo']:
+                    task_data['assignedTo'] = ObjectId(task_data['assignedTo'])
+                    
+                # Get user's person record
+                person = people_collection.find_one({'userId': ObjectId(str(request.user.id))})
+                if not person:
+                    return Response(
+                        {"error": "User's person record not found"},
+                        status=status.HTTP_404_NOT_FOUND
                     )
-                    
-                    # Set due date if provided
-                    if 'dueDate' in task_data and task_data['dueDate']:
-                        try:
-                            task.dueDate = datetime.strptime(task_data['dueDate'], '%Y-%m-%d')
-                            task.save()
-                        except ValueError:
-                            logger.warning(f"Invalid due date format: {task_data['dueDate']}")
-                    
-                    created_tasks.append({
-                        'id': str(task.id),
-                        'title': task.title
-                    })
                 
-                return Response({
-                    'message': f"Successfully created {len(created_tasks)} tasks",
-                    'tasks': created_tasks
+                # Create new task document
+                new_task = {
+                    'title': task_data.get('title', 'Untitled Task'),
+                    'description': task_data.get('description', ''),
+                    'status': 'pending',
+                    'priority': task_data.get('priority', 'medium'),
+                    'assignedTo': task_data.get('assignedTo'),
+                    'assignedBy': person['_id'],
+                    'organization': person['organization'],
+                    'source': task_data.get('source', 'transcription'),
+                    'aiGenerated': task_data.get('aiGenerated', False),
+                    'createdAt': datetime.now(),
+                    'updatedAt': datetime.now()
+                }
+                
+                # Set due date if provided
+                if 'dueDate' in task_data and task_data['dueDate']:
+                    try:
+                        new_task['dueDate'] = datetime.strptime(task_data['dueDate'], '%Y-%m-%d')
+                    except ValueError:
+                        logger.warning(f"Invalid due date format: {task_data['dueDate']}")
+                
+                # Insert task
+                result = tasks_collection.insert_one(new_task)
+                
+                created_tasks.append({
+                    'id': str(result.inserted_id),
+                    'title': new_task['title']
                 })
-                
+            
+            return Response({
+                'message': f"Successfully created {len(created_tasks)} tasks",
+                'tasks': created_tasks
+            })
+            
         except Exception as e:
             logger.error(f"Error saving tasks: {str(e)}")
             return Response(

@@ -1,10 +1,11 @@
+// src/api/aiApi.js
 import axios from 'axios';
 
-const AI_API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/ai';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api';
 
 // Configure axios with authentication
 const aiApiClient = axios.create({
-  baseURL: AI_API_BASE_URL,
+  baseURL: `${API_BASE_URL}/ai`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,7 +23,11 @@ aiApiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Process audio recording for transcription and task extraction
+/**
+ * Process audio recording for transcription and task extraction
+ * @param {FormData} formData - FormData object containing audio file and userId
+ * @returns {Promise<Object>} - Transcription and extracted tasks
+ */
 export const processAudioTranscription = async (formData) => {
   try {
     // For form data, update headers
@@ -34,7 +39,7 @@ export const processAudioTranscription = async (formData) => {
     };
     
     const response = await axios.post(
-      `${AI_API_BASE_URL}/process-audio/`, 
+      `${API_BASE_URL}/ai/process-audio/`, 
       formData,
       config
     );
@@ -45,7 +50,12 @@ export const processAudioTranscription = async (formData) => {
   }
 };
 
-// Get AI-based task predictions
+/**
+ * Get AI-based task predictions for a specific person
+ * @param {string} personId - ID of the person to generate predictions for
+ * @param {Object} contextData - Additional context data (optional)
+ * @returns {Promise<Object>} - Predicted tasks
+ */
 export const getPredictedTasks = async (personId, contextData = {}) => {
   try {
     const response = await aiApiClient.post('/predict-tasks/', {
@@ -59,13 +69,33 @@ export const getPredictedTasks = async (personId, contextData = {}) => {
   }
 };
 
-// Analyze past tasks for insights
+/**
+ * Analyze past tasks for insights and patterns
+ * @param {string} personId - ID of the person to analyze tasks for
+ * @param {string} timeframe - Time period for analysis (week, month, quarter, year)
+ * @returns {Promise<Object>} - Analysis results
+ */
 export const getTaskAnalysis = async (personId, timeframe = 'month') => {
   try {
     const response = await aiApiClient.get(`/analyze-tasks/${personId}/?timeframe=${timeframe}`);
     return response.data;
   } catch (error) {
     console.error('Error analyzing tasks:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save tasks extracted from audio
+ * @param {Array} tasks - Array of task objects to save
+ * @returns {Promise<Object>} - Response with created tasks info
+ */
+export const saveExtractedTasks = async (tasks) => {
+  try {
+    const response = await aiApiClient.post('/save-tasks/', { tasks });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving extracted tasks:', error);
     throw error;
   }
 };
