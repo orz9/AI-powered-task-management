@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { createTask } from '../api/taskApi';
 import { useAuth } from '../context/AuthContext';
+import AudioRecorder from './AudioRecorder';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
@@ -20,6 +21,7 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showVoiceModel, setShowVoiceModel] = useState(false);
 
   // Fetch people directly from API
   useEffect(() => {
@@ -247,7 +249,41 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
           >
             {isSubmitting ? 'Creating...' : 'Create Task'}
           </button>
+          <button
+            type="button"
+            className="voice-create-btn"
+            onClick={() => setShowVoiceModel(true)}
+          >
+            🎤 Voice Create
+          </button>
         </div>
+        
+        {showVoiceModel && (
+          <div className="voice-model-overlay">
+            <div className="voice-model">
+              <div className="voice-model-header">
+                <h3>Create Task with Voice</h3>
+                <button 
+                  className="close-model-btn"
+                  onClick={() => setShowVoiceModel(false)}
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="voice-model-content">
+                <AudioRecorder 
+                  userId={currentUser?.id}
+                  onTasksCreated={() => {
+                    setShowVoiceModel(false);
+                    if (onTaskCreated) {
+                      onTaskCreated();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );

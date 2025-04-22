@@ -110,7 +110,17 @@ class OpenAIClient:
         - Priority (if mentioned)
         - Description with any relevant details
         
-        Format each task as a JSON object. Return an array of these tasks.
+        Format each task as a JSON object. Return only a valid JSON array of these task objects.
+        DO NOT include any explanation, comments, or markdown. Example format:
+        [
+          {
+            "title": "Prepare slides",
+            "Assigned_person": "David",
+            "description": "Create a slide deck for the weekly meeting",
+            "due_date": "2025-04-30",
+            "priority": "high"
+          }
+        ]
         """
         
         user_message = text
@@ -135,7 +145,6 @@ class OpenAIClient:
             try:
                 response = self.client.chat.completions.create(
                     model="gpt-4",  # Or use "gpt-4" for better results
-                    response_format={"type": "json_object"},
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_message}
@@ -143,8 +152,19 @@ class OpenAIClient:
                     temperature=0.3  # Lower temperature for more consistent extraction
                 )
                 
-                result = json.loads(response.choices[0].message.content)
-                return result.get('tasks', [])
+                raw_content = response.choices[0].message.content.strip()
+                logger.debug(f"Raw GPT response:\n{raw_content}")
+
+                # Optional: try to extract the JSON part using regex if GPT still includes extra text
+                if not raw_content.startswith("["):
+                    import re
+                    match = re.search(r"\[.*\]", raw_content, re.DOTALL)
+                    if match:
+                        raw_content = match.group(0)
+                    else:
+                        raise ValueError("Could not find valid JSON array in GPT response.")
+
+                return json.loads(raw_content)
                 
             except Exception as e:
                 if not self._handle_api_error(e, attempt):
@@ -200,9 +220,19 @@ class OpenAIClient:
         - Estimated due date
         - Priority level
         - Brief description explaining why this task is predicted
-        - Confidence score (0.0-1.0) indicating your confidence in this prediction
+        - Confidence score (0.0-1.0) with one decimal place to indicate your confidence in this prediction
         
-        Format your response as a JSON object with an array of task predictions.
+        Format each task as a JSON object. Return only a valid JSON array of these task predictions.
+        DO NOT include any explanation, comments, or markdown. Example format:
+        [
+          {
+            "title": "Prepare slides",
+            "description": "Create a slide deck for the weekly meeting",
+            "estimated_due_date": "2025-04-30",
+            "priority": "high",
+            "confidence": "0.8"
+          }
+        ]
         """
         
         user_message = f"""
@@ -290,6 +320,31 @@ class OpenAIClient:
         
         Format your response as a JSON object with keys for each category of insight.
         Each insight should include a description and confidence level (0.0-1.0).
+
+        Return only a valid JSON array of these task predictions.
+        DO NOT include any explanation, comments, or markdown. Example format:
+        {
+          "time_management_patterns": {
+            "description": "Most tasks are created early in the week but tend to be completed close to deadlines.",
+            "confidence": 0.85
+          },
+          "bottlenecks_and_delays": {
+            "description": "Tasks with high priority tend to be delayed due to workload clustering on specific individuals.",
+            "confidence": 0.76
+          },
+          "task_distribution": {
+            "description": "Workload is unevenly distributed, with one team member completing 60% of tasks.",
+            "confidence": 0.82
+          },
+          "priority_impact": {
+            "description": "High-priority tasks have slightly better completion rates but longer durations.",
+            "confidence": 0.71
+          },
+          "efficiency_recommendations": {
+            "description": "Consider balancing workload across team members and assigning deadlines earlier in the week.",
+            "confidence": 0.88
+          }
+        }
         """
         
         user_message = f"""
