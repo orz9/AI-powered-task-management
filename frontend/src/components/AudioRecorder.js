@@ -14,7 +14,6 @@ const AudioRecorder = ({ userId }) => {
   const [error, setError] = useState(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
-  
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -51,10 +50,10 @@ const AudioRecorder = ({ userId }) => {
       mediaRecorderRef.current.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setAudioBlob(audioBlob);
-        
+      
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
-      };
+      };      
       
       // Start recording and timer
       mediaRecorderRef.current.start();
