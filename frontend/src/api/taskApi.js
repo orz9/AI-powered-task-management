@@ -92,10 +92,30 @@ export const createTask = async (taskData) => {
  */
 export const updateTask = async (taskId, taskData) => {
   try {
-    const response = await apiClient.put(`/tasks/${taskId}/`, taskData);
+    // Log what we're about to send to the server
+    console.log("Updating task:", taskId);
+    console.log("Update data:", taskData);
+    
+    // Make sure we're matching the expected field names on the backend
+    const formattedData = {
+      title: taskData.title,
+      description: taskData.description || "",
+      status: taskData.status || "todo",
+      priority: taskData.priority || "medium",
+      dueDate: taskData.dueDate || null
+    };
+    
+    // If you have assigning to a new person, include that
+    if (taskData.assignedTo) {
+      formattedData.assignedTo = taskData.assignedTo;
+    }
+    
+    const response = await apiClient.put(`/tasks/${taskId}/`, formattedData);
+    console.log("Update response:", response.data);
     return response.data;
   } catch (error) {
     console.error('Error updating task:', error);
+    console.error('Error response:', error.response?.data || 'No response data');
     throw error;
   }
 };

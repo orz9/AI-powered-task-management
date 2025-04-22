@@ -301,7 +301,7 @@ class TaskViewSet(viewsets.ViewSet):
     
         # Copy fields from request.data
         allowed_fields = ['title', 'description', 'status', 'priority', 'dueDate', 
-                     'assignedTo', 'team', 'category', 'aiGenerated']
+                        'assignedTo', 'team', 'category', 'aiGenerated']
     
         for field in allowed_fields:
             if field in request.data:
@@ -320,19 +320,36 @@ class TaskViewSet(viewsets.ViewSet):
         task_data['created_at'] = datetime.datetime.now()
         task_data['updated_at'] = datetime.datetime.now()
     
-        # Set assigned_by to current user (if available)
+        # Set assigned_by to current user
         if hasattr(request.user, 'id'):
-            # Use string ID directly in MongoDB, avoiding ObjectId conversion issues
             task_data['assigned_by'] = str(request.user.id)
     
-        # Don't convert to ObjectId yet - store as strings and handle in queries
-        if 'assigned_to' in task_data and task_data['assigned_to']:
-            task_data['assigned_to'] = str(task_data['assigned_to'])
-    
-        if 'team' in task_data and task_data['team']:
-            task_data['team'] = str(task_data['team'])
+        # Convert IDs to proper format for MongoDB lookups
+        try:
+            # Store assignedTo as ObjectId if possible, otherwise as string
+            if 'assigned_to' in task_data and task_data['assigned_to']:
+                try:
+                    task_data['assigned_to'] = str(task_data['assigned_to'])
+                    # Test lookup to verify user exists
+                    user = users_collection.find_one({'_id': task_data['assigned_to']})
+                    if not user:
+                        # Try looking up in people collection
+                        user = people_collection.find_one({'_id': task_data['assigned_to']})
+                except Exception as e:
+                    print(f"Warning: User lookup failed: {str(e)}")
         
-        # Insert task into MongoDB - this should work with string IDs
+            # Store team as ObjectId if possible, otherwise as string
+            if 'team' in task_data and task_data['team']:
+                try:
+                    task_data['team'] = str(task_data['team'])
+                    # Test lookup to verify team exists
+                    team = teams_collection.find_one({'_id': task_data['team']})
+                except Exception as e:
+                    print(f"Warning: Team lookup failed: {str(e)}")
+        except Exception as e:
+            print(f"Warning during ID conversion: {str(e)}")
+    
+        # Insert task into MongoDB
         try:
             result = tasks_collection.insert_one(task_data)
             task_id = str(result.inserted_id)
@@ -353,13 +370,58 @@ class TaskViewSet(viewsets.ViewSet):
             # Process task for serialization (convert ObjectId to string)
             created_task['_id'] = str(created_task['_id'])
         
-            # No need to use the serializer for the response
+            # Enrich with user and team details for better frontend display
+            if 'assigned_to' in created_task and created_task['assigned_to']:
+                created_task['assigned_to'] = str(created_task['assigned_to'])
+            
+                # Try to get user details
+                try:
+                    user = users_collection.find_one({'_id': created_task['assigned_to']})
+                    if user:
+                        created_task['assigned_to_details'] = {
+                            'id': str(user['_id']),
+                            'name': f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                            'username': user.get('username', ''),
+                            'email': user.get('email', '')
+                    }
+                except Exception as e:
+                    print(f"Error enriching user details: {str(e)}")
+                
+            if 'assigned_by' in created_task and created_task['assigned_by']:
+                created_task['assigned_by'] = str(created_task['assigned_by'])
+            
+                # Try to get creator details
+                try:
+                    creator = users_collection.find_one({'_id': created_task['assigned_by']})
+                    if creator:
+                        created_task['assigned_by_details'] = {
+                            'id': str(creator['_id']),
+                            'name': f"{creator.get('first_name', '')} {creator.get('last_name', '')}".strip(),
+                            'username': creator.get('username', ''),
+                        }
+                except Exception as e:
+                    print(f"Error enriching creator details: {str(e)}")
+                
+            if 'team' in created_task and created_task['team']:
+                created_task['team'] = str(created_task['team'])
+            
+                # Try to get team details
+                try:
+                    team = teams_collection.find_one({'_id': created_task['team']})
+                    if team:
+                        created_task['team_details'] = {
+                            'id': str(team['_id']),
+                            'name': team.get('name', '')
+                        }
+                except Exception as e:
+                    print(f"Error enriching team details: {str(e)}")
+        
             return Response(created_task, status=status.HTTP_201_CREATED)
         
         except Exception as e:
             print(f"Error creating task: {str(e)}")
             return Response({"error": f"Error creating task: {str(e)}"}, 
-                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                      status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def update(self, request, pk=None):
         """Update a task"""
