@@ -14,4 +14,9 @@ router.register(r'categories', TaskCategoryViewSet, basename='category')
 router.register(r'security-levels', SecurityLevelViewSet, basename='security-level')
 
 # The API URLs are now determined automatically by the router
-urlpatterns = router.urls
+urlpatterns = [
+    path('', include(router.urls)),
+    
+    # Add custom user-specific task routes
+    path('tasks/user/<str:user_id>/', TaskViewSet.as_view({'get': 'user_tasks'}), name='user-tasks'),
+]

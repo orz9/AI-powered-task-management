@@ -164,6 +164,64 @@ class TaskViewSet(viewsets.ViewSet):
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
     
+    def user_tasks(self, request, user_id=None):
+        """Get tasks for a specific user"""
+        try:
+            # Build query to find tasks assigned to user
+            query = {'assigned_to': user_id}
+            
+            # Apply status filter if provided
+            status_filter = request.query_params.get('status')
+            if status_filter:
+                query['status'] = status_filter
+                
+            # Fetch tasks from MongoDB
+            tasks = list(tasks_collection.find(query).sort('created_at', -1))
+            
+            # Process tasks for serialization
+            for task in tasks:
+                task['_id'] = str(task['_id'])
+                
+                if 'assigned_to' in task and task['assigned_to']:
+                    task['assigned_to'] = str(task['assigned_to'])
+                    
+                    # Get assignee details
+                    try:
+                        assignee = people_collection.find_one({'_id': user_id})
+                        if assignee:
+                            task['assigned_to_details'] = {
+                                'id': str(assignee['_id']),
+                                'name': assignee.get('name', ''),
+                                'role': assignee.get('role', '')
+                            }
+                    except:
+                        pass
+                    
+                if 'assigned_by' in task and task['assigned_by']:
+                    task['assigned_by'] = str(task['assigned_by'])
+                
+                if 'category' in task and task['category']:
+                    task['category'] = str(task['category'])
+                
+                if 'team' in task and task['team']:
+                    task['team'] = str(task['team'])
+                    
+                if 'related_tasks' in task and task['related_tasks']:
+                    task['related_tasks'] = [str(t) if isinstance(t, ObjectId) else t for t in task['related_tasks']]
+                
+                if 'blocking_tasks' in task and task['blocking_tasks']:
+                    task['blocking_tasks'] = [str(t) if isinstance(t, ObjectId) else t for t in task['blocking_tasks']]
+            
+            serializer = TaskSerializer(tasks, many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            print(f"Error fetching user tasks: {str(e)}")
+            return Response(
+                {"error": f"Error fetching tasks: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     def retrieve(self, request, pk=None):
         """Get a specific task"""
         task = tasks_collection.find_one({'_id': pk})
@@ -235,69 +293,73 @@ class TaskViewSet(viewsets.ViewSet):
     
     def create(self, request):
         """Create a new task"""
-        serializer = TaskSerializer(data=request.data)
+        # Log the received data for debugging
+        print("Received task data:", request.data)
+    
+        # Use a dictionary instead of serializer to avoid validation issues for MongoDB
+        task_data = {}
+    
+        # Copy fields from request.data
+        allowed_fields = ['title', 'description', 'status', 'priority', 'dueDate', 
+                     'assignedTo', 'team', 'category', 'aiGenerated']
+    
+        for field in allowed_fields:
+            if field in request.data:
+                # Convert camelCase to snake_case for MongoDB
+                snake_field = ''.join(['_' + c.lower() if c.isupper() else c for c in field]).lstrip('_')
+                task_data[snake_field] = request.data[field]
+    
+        # Handle specific fields
+        if 'dueDate' in request.data and request.data['dueDate']:
+            try:
+                task_data['due_date'] = datetime.datetime.fromisoformat(request.data['dueDate'])
+            except (ValueError, TypeError):
+                return Response({"error": "Invalid due date format"}, status=status.HTTP_400_BAD_REQUEST)
+    
+        # Add created_at and updated_at timestamps
+        task_data['created_at'] = datetime.datetime.now()
+        task_data['updated_at'] = datetime.datetime.now()
+    
+        # Set assigned_by to current user (if available)
+        if hasattr(request.user, 'id'):
+            # Use string ID directly in MongoDB, avoiding ObjectId conversion issues
+            task_data['assigned_by'] = str(request.user.id)
+    
+        # Don't convert to ObjectId yet - store as strings and handle in queries
+        if 'assigned_to' in task_data and task_data['assigned_to']:
+            task_data['assigned_to'] = str(task_data['assigned_to'])
+    
+        if 'team' in task_data and task_data['team']:
+            task_data['team'] = str(task_data['team'])
         
-        if serializer.is_valid():
-            task_data = serializer.validated_data
-            
-            # Add created_at and updated_at timestamps
-            task_data['created_at'] = datetime.datetime.now()
-            task_data['updated_at'] = datetime.datetime.now()
-            
-            # Set assigned_by to current user
-            task_data['assigned_by'] = ObjectId(str(request.user.id))
-            
-            # Convert string IDs to ObjectId
-            if 'assigned_to' in task_data and task_data['assigned_to']:
-                task_data['assigned_to'] = ObjectId(task_data['assigned_to'])
-            
-            if 'category' in task_data and task_data['category']:
-                task_data['category'] = ObjectId(task_data['category'])
-            
-            if 'security_level' in task_data and task_data['security_level']:
-                task_data['security_level'] = ObjectId(task_data['security_level'])
-            
-            if 'team' in task_data and task_data['team']:
-                task_data['team'] = ObjectId(task_data['team'])
-            
-            # Insert task into MongoDB
+        # Insert task into MongoDB - this should work with string IDs
+        try:
             result = tasks_collection.insert_one(task_data)
-            task_id = result.inserted_id
-            
+            task_id = str(result.inserted_id)
+        
             # Create task history record
             history_data = {
                 'task_id': task_id,
-                'user_id': ObjectId(str(request.user.id)),
+                'user_id': str(request.user.id) if hasattr(request.user, 'id') else None,
                 'change_type': 'task_created',
                 'new_value': f"Task '{task_data.get('title', '')}' created",
                 'timestamp': datetime.datetime.now()
             }
             task_history_collection.insert_one(history_data)
-            
+        
             # Get the created task
-            created_task = tasks_collection.find_one({'_id': task_id})
-            
-            # Process task for serialization
+            created_task = tasks_collection.find_one({'_id': result.inserted_id})
+        
+            # Process task for serialization (convert ObjectId to string)
             created_task['_id'] = str(created_task['_id'])
-            
-            if 'assigned_to' in created_task and created_task['assigned_to'] and isinstance(created_task['assigned_to'], ObjectId):
-                created_task['assigned_to'] = str(created_task['assigned_to'])
-            
-            if 'assigned_by' in created_task and created_task['assigned_by'] and isinstance(created_task['assigned_by'], ObjectId):
-                created_task['assigned_by'] = str(created_task['assigned_by'])
-            
-            if 'category' in created_task and created_task['category'] and isinstance(created_task['category'], ObjectId):
-                created_task['category'] = str(created_task['category'])
-            
-            if 'security_level' in created_task and created_task['security_level'] and isinstance(created_task['security_level'], ObjectId):
-                created_task['security_level'] = str(created_task['security_level'])
-            
-            if 'team' in created_task and created_task['team'] and isinstance(created_task['team'], ObjectId):
-                created_task['team'] = str(created_task['team'])
-            
+        
+            # No need to use the serializer for the response
             return Response(created_task, status=status.HTTP_201_CREATED)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Error creating task: {str(e)}")
+            return Response({"error": f"Error creating task: {str(e)}"}, 
+                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def update(self, request, pk=None):
         """Update a task"""
@@ -500,8 +562,7 @@ class TaskViewSet(viewsets.ViewSet):
         
         serializer = TaskHistorySerializer(history, many=True)
         return Response(serializer.data)
-
-
+    
 class CommentViewSet(viewsets.ViewSet):
     """
     API endpoint for task comments.

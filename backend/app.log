@@ -302,3 +302,36 @@ AttributeError: type object 'Task' has no attribute '_meta'
 2025-04-22 04:10:34,617 - django.server - ERROR - "GET /api/auth/user/ HTTP/1.1" 503 44
 2025-04-22 04:10:39,737 - django.request - ERROR - Service Unavailable: /api/auth/user/
 2025-04-22 04:10:39,738 - django.server - ERROR - "GET /api/auth/user/ HTTP/1.1" 503 44
+2025-04-22 17:18:38,108 - django.server - INFO - "OPTIONS /api/auth/login/ HTTP/1.1" 200 0
+2025-04-22 17:18:39,793 - django.server - INFO - "POST /api/auth/login/ HTTP/1.1" 200 392
+2025-04-22 17:18:39,829 - django.server - INFO - "OPTIONS /api/tasks/user/680684174195dcc6e3ae5b7a/ HTTP/1.1" 200 0
+2025-04-22 17:18:39,831 - django.server - INFO - "OPTIONS /api/tasks/user/680684174195dcc6e3ae5b7a/ HTTP/1.1" 200 0
+2025-04-22 17:18:40,058 - django.request - WARNING - Not Found: /api/tasks/user/680684174195dcc6e3ae5b7a/
+2025-04-22 17:18:40,058 - django.server - WARNING - "GET /api/tasks/user/680684174195dcc6e3ae5b7a/ HTTP/1.1" 404 19501
+2025-04-22 17:18:41,151 - django.request - WARNING - Not Found: /api/tasks/user/680684174195dcc6e3ae5b7a/
+2025-04-22 17:18:41,153 - django.server - WARNING - "GET /api/tasks/user/680684174195dcc6e3ae5b7a/ HTTP/1.1" 404 19501
+2025-04-22 17:18:41,770 - django.server - INFO - "OPTIONS /api/api/people/ HTTP/1.1" 200 0
+2025-04-22 17:18:41,770 - django.server - INFO - "OPTIONS /api/api/people/ HTTP/1.1" 200 0
+2025-04-22 17:18:41,980 - django.request - WARNING - Not Found: /api/api/people/
+2025-04-22 17:18:41,980 - django.server - WARNING - "GET /api/api/people/ HTTP/1.1" 404 19426
+2025-04-22 17:18:41,989 - django.request - WARNING - Not Found: /api/api/people/
+2025-04-22 17:18:41,990 - django.server - WARNING - "GET /api/api/people/ HTTP/1.1" 404 19426
+2025-04-22 17:18:50,230 - django.server - INFO - "OPTIONS /api/auth/user/ HTTP/1.1" 200 0
+2025-04-22 17:18:50,230 - django.server - INFO - "OPTIONS /api/auth/user/ HTTP/1.1" 200 0
+2025-04-22 17:18:50,869 - django.server - INFO - "GET /api/auth/user/ HTTP/1.1" 200 176
+2025-04-22 17:18:50,891 - django.server - INFO - "GET /api/auth/user/ HTTP/1.1" 200 176
+2025-04-22 17:20:41,554 - django.server - INFO - "OPTIONS /api/tasks/ HTTP/1.1" 200 0
+2025-04-22 17:20:41,802 - django.request - WARNING - Bad Request: /api/tasks/
+2025-04-22 17:20:41,803 - django.server - WARNING - "POST /api/tasks/ HTTP/1.1" 400 41
+2025-04-22 17:32:52,707 - django.request - WARNING - Not Found: /api/api/people/
+2025-04-22 17:32:52,707 - django.server - WARNING - "GET /api/api/people/ HTTP/1.1" 404 19426
+2025-04-22 17:33:20,920 - django.utils.autoreload - INFO - C:\Users\elvac\Documents\AI-powered-people-centric-task-management\backend\tasks\serializers.py changed, reloading.
+2025-04-22 17:35:12,363 - django.utils.autoreload - INFO - C:\Users\elvac\Documents\AI-powered-people-centric-task-management\backend\tasks\serializers.py changed, reloading.
+2025-04-22 17:36:01,435 - django.utils.autoreload - INFO - C:\Users\elvac\Documents\AI-powered-people-centric-task-management\backend\tasks\urls.py changed, reloading.
+2025-04-22 17:44:50,117 - django.utils.autoreload - INFO - C:\Users\elvac\Documents\AI-powered-people-centric-task-management\backend\tasks\views.py changed, reloading.
+2025-04-22 17:45:34,707 - django.utils.autoreload - INFO - C:\Users\elvac\Documents\AI-powered-people-centric-task-management\backend\tasks\urls.py changed, reloading.
+2025-04-22 17:45:58,234 - django.server - INFO - "POST /api/tasks/ HTTP/1.1" 201 315
+2025-04-22 17:46:05,383 - django.request - WARNING - Not Found: /api/api/people/
+2025-04-22 17:46:05,384 - django.server - WARNING - "GET /api/api/people/ HTTP/1.1" 404 22053
+2025-04-22 17:46:06,479 - django.request - WARNING - Not Found: /api/api/people/
+2025-04-22 17:46:06,480 - django.server - WARNING - "GET /api/api/people/ HTTP/1.1" 404 22053
