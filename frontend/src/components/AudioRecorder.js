@@ -64,11 +64,15 @@ const AudioRecorder = ({ userId, people: initialPeople }) => {
           person.email === currentUser.email
         );
         
-        if (currentUserInList) {
+        const needsUpdate = extractedTasks.some(task => 
+          !task.assignedTo || task.assignedTo.id != currentUserInList.id
+        );
+
+        if (currentUserInList && needsUpdate) {
           setExtractedTasks(prev =>
             prev?.map(task => ({
               ...task,
-              assignedBy: currentUserInList.id
+              assignedTo: currentUserInList.id
             })) || []
           );
         }
@@ -83,8 +87,12 @@ const AudioRecorder = ({ userId, people: initialPeople }) => {
           person.id === currentUser.id || 
           person.email === currentUser.email
         );
-  
-        if (currentUserInList) {
+        
+        const needsUpdate = extractedTasks.some(task => 
+          !task.assignedBy || task.assignedBy.id != currentUserInList.id
+        );
+
+        if (currentUserInList && needsUpdate) {
           setExtractedTasks(prev =>
             prev?.map(task => ({
               ...task,
