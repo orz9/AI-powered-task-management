@@ -197,12 +197,14 @@ const TaskList = ({ tasks: initialTasks }) => {
 
   // Helper to get assigned person name
   const getAssigneeName = (task) => {
+    // Debug log to see what's available
+    console.log("Assignee info:", {
+      assigned_to: task.assigned_to,
+      assigned_to_details: task.assigned_to_details
+    });
+    
     if (task.assigned_to_details?.name) {
       return task.assigned_to_details.name;
-    }
-    
-    if (task.assigned_to_details?.username) {
-      return task.assigned_to_details.username;
     }
     
     return 'Not assigned';
@@ -218,10 +220,6 @@ const TaskList = ({ tasks: initialTasks }) => {
     
     if (task.assigned_by_details?.name) {
       return task.assigned_by_details.name;
-    }
-    
-    if (task.assigned_by_details?.username) {
-      return task.assigned_by_details.username;
     }
     
     return 'Unknown';
