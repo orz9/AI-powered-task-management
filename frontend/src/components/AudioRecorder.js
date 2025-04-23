@@ -65,14 +65,14 @@ const AudioRecorder = ({ userId, people: initialPeople }) => {
         );
         
         const needsUpdate = extractedTasks.some(task => 
-          !task.assignedBy || task.assignedBy.id != currentUserInList.id
+          !task.assignedTo || task.assignedTo.id != currentUserInList.id
         );
 
         if (currentUserInList && needsUpdate) {
           setExtractedTasks(prev =>
             prev?.map(task => ({
               ...task,
-              assignedBy: currentUserInList.id
+              assignedTo: currentUserInList.id
             })) || []
           );
         }
