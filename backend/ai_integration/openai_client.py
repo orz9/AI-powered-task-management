@@ -103,7 +103,8 @@ class OpenAIClient:
         """
         system_prompt = """
         You are an AI assistant that extracts actionable tasks from meeting transcripts or notes.
-        For each task you identify, extract the following information:
+        For each task you identify, extract the following information, you don't necessarily to have all
+        information, just fill in as many as you can:
         - Task title (clear and concise)
         - Assigned person (if mentioned)
         - Due date (if mentioned)

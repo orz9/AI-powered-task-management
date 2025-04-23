@@ -2,9 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { processAudioTranscription } from '../api/aiApi';
 import { createTask } from '../api/taskApi';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
-const AudioRecorder = ({ userId }) => {
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
+const AudioRecorder = ({ userId, people: initialPeople }) => {
   const { currentUser } = useAuth();
+  const [people, setPeople] = useState(initialPeople || []);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -17,6 +21,79 @@ const AudioRecorder = ({ userId }) => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+  
+  // Fetch people directly from API
+  useEffect(() => {
+    const fetchPeople = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // First try to get people from API
+        const response = await axios.get(`${API_BASE_URL}/people/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log("People data from API:", response.data);
+          setPeople(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching people:', err);
+        
+        // If API fails, at least add current user
+        if (currentUser) {
+          const currentUserPerson = {
+            id: currentUser.id,
+            name: currentUser.name || currentUser.username || 'Current User',
+            role: currentUser.role
+          };
+          console.log("Adding current user as fallback:", currentUserPerson);
+          setPeople([currentUserPerson]);
+        }
+      }
+    };
+
+    fetchPeople();
+  }, [currentUser]);
+
+  // Set current user as assignee when currentUser or people changes
+    useEffect(() => {
+      if (currentUser && currentUser.id && people.length > 0) {
+        // Find the current user in people list
+        const currentUserInList = people.find(person => 
+          person.id === currentUser.id || 
+          person.email === currentUser.email
+        );
+        
+        if (currentUserInList) {
+          setExtractedTasks(prev =>
+            prev?.map(task => ({
+              ...task,
+              assignedBy: currentUserInList.id
+            })) || []
+          );
+        }
+      }
+    }, [currentUser, people, extractedTasks]);
+  
+    // Set current user as assignedBy
+    useEffect(() => {
+      if (currentUser && currentUser.id && people.length > 0) {
+        // Find the current user in people list
+        const currentUserInList = people.find(person => 
+          person.id === currentUser.id || 
+          person.email === currentUser.email
+        );
+  
+        if (currentUserInList) {
+          setExtractedTasks(prev =>
+            prev?.map(task => ({
+              ...task,
+              assignedBy: currentUserInList.id
+            })) || []
+          );
+        }
+      }
+    }, [currentUser, people, extractedTasks])
   
   // Clean up when component unmounts
   useEffect(() => {
@@ -142,6 +219,7 @@ const AudioRecorder = ({ userId }) => {
           source: 'audio'
         });
       }
+      console.log("debug: ", extractedTasks);
       
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);

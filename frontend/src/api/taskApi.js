@@ -68,6 +68,7 @@ export const createTask = async (taskData) => {
       status: taskData.status || "todo",
       priority: taskData.priority || "medium",
       assignedTo: taskData.assignedTo || null,
+      assignedBy: taskData.assignedBy || null,
       team: taskData.team || null,
       dueDate: taskData.dueDate || null,
       aiGenerated: !!taskData.aiGenerated

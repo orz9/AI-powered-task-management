@@ -60,7 +60,7 @@ const Dashboard = () => {
         setTasks(tasksData);
         
         // Leaders see all people, team members see only themselves and direct collaborators
-        const peopleResponse = await axios.get(`${API_BASE_URL}/api/people/`, {
+        const peopleResponse = await axios.get(`${API_BASE_URL}/people/`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         setPeople(peopleResponse.data);

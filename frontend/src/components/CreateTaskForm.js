@@ -13,6 +13,7 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
     title: '',
     description: '',
     assignedTo: '',
+    assignedBy: '',
     team: '',
     priority: 'medium',
     dueDate: '',
@@ -29,7 +30,7 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
       try {
         const token = localStorage.getItem('token');
         // First try to get people from API
-        const response = await axios.get(`${API_BASE_URL}/api/people/`, {
+        const response = await axios.get(`${API_BASE_URL}/people/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -74,6 +75,24 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
     }
   }, [currentUser, people]);
 
+  // Set current user as assignedBy
+  useEffect(() => {
+    if (currentUser && currentUser.id && people.length > 0) {
+      // Find the current user in people list
+      const currentUserInList = people.find(person => 
+        person.id === currentUser.id || 
+        person.email === currentUser.email
+      );
+
+      if (currentUserInList) {
+        setFormData(prev => ({
+          ...prev,
+          assignedBy: currentUserInList.id
+        }));
+      }
+    }
+  }, [currentUser, people]) 
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,23 +107,11 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
-    
     try {
       // Create task
       await createTask({
         ...formData,
         aiGenerated: false
-      });
-      
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        assignedTo: currentUser?.id || '',
-        team: '',
-        priority: 'medium',
-        dueDate: '',
-        status: 'todo'
       });
       
       // Show success message

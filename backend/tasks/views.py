@@ -131,20 +131,29 @@ class TaskViewSet(viewsets.ViewSet):
         for task in tasks:
             task['_id'] = str(task['_id'])
             
-            if 'assigned_to' in task and task['assigned_to'] and isinstance(task['assigned_to'], ObjectId):
-                task['assigned_to'] = str(task['assigned_to'])
-                
+            if 'assigned_to' in task and task['assigned_to']:
                 # Get assignee details
                 assignee = people_collection.find_one({'_id': ObjectId(task['assigned_to'])})
                 if assignee:
                     task['assigned_to_details'] = {
-                        'id': str(assignee['_id']),
+                        'id': str(assignee['userId']),
                         'name': assignee.get('name', ''),
                         'role': assignee.get('role', '')
                     }
             
-            if 'assigned_by' in task and task['assigned_by'] and isinstance(task['assigned_by'], ObjectId):
-                task['assigned_by'] = str(task['assigned_by'])
+            if 'assigned_by' in task and task['assigned_by']:
+                # Get assigned_by details
+                assigned_by = people_collection.find_one({'_id': ObjectId(task['assigned_by'])})
+                if assigned_by:
+                    task['assigned_by_details'] = {
+                        'id': str(assigned_by['userId']),
+                        'name': assigned_by.get('name', ''),
+                        'role': assigned_by.get('role', '')
+                    }
+                for person in people_collection.find():
+                    print(f"person: {person}")
+                print(f"assigned_by: {task['assigned_by']}")
+                print(f"assignee: {assignee}")
             
             if 'category' in task and task['category'] and isinstance(task['category'], ObjectId):
                 task['category'] = str(task['category'])
@@ -301,7 +310,7 @@ class TaskViewSet(viewsets.ViewSet):
     
         # Copy fields from request.data
         allowed_fields = ['title', 'description', 'status', 'priority', 'dueDate', 
-                        'assignedTo', 'team', 'category', 'aiGenerated']
+                        'assignedTo', 'assignedBy', 'team', 'category', 'aiGenerated']
     
         for field in allowed_fields:
             if field in request.data:
@@ -320,11 +329,7 @@ class TaskViewSet(viewsets.ViewSet):
         task_data['created_at'] = datetime.datetime.now()
         task_data['updated_at'] = datetime.datetime.now()
     
-        # Set assigned_by to current user
-        if hasattr(request.user, 'id'):
-            task_data['assigned_by'] = str(request.user.id)
-    
-        # Convert IDs to proper format for MongoDB lookups
+        # Convert IDs to proper format userId for MongoDB lookups
         try:
             # Store assignedTo as ObjectId if possible, otherwise as string
             if 'assigned_to' in task_data and task_data['assigned_to']:
@@ -334,7 +339,19 @@ class TaskViewSet(viewsets.ViewSet):
                     user = users_collection.find_one({'_id': task_data['assigned_to']})
                     if not user:
                         # Try looking up in people collection
-                        user = people_collection.find_one({'_id': task_data['assigned_to']})
+                        user = people_collection.find_one({'_id': ObjectId(task_data['assigned_to'])})
+                except Exception as e:
+                    print(f"Warning: User lookup failed: {str(e)}")
+            
+            # Store assignedBy as ObjectId if possible, otherwise as string
+            if 'assigned_by' in task_data and task_data['assigned_by']:
+                try:
+                    task_data['assigned_by'] = str(task_data['assigned_by'])
+                    # Test lookup to verify user exists
+                    user = users_collection.find_one({'_id': task_data['assigned_by']})
+                    if not user:
+                        # Try looking up in people collection
+                        user = people_collection.find_one({'_id': ObjectId(task_data['assigned_by'])})
                 except Exception as e:
                     print(f"Warning: User lookup failed: {str(e)}")
         
@@ -426,7 +443,7 @@ class TaskViewSet(viewsets.ViewSet):
     def update(self, request, pk=None):
         """Update a task"""
         try:
-            task_id = pk
+            task_id = ObjectId(pk)
         except:
             return Response({"error": "Invalid task ID"}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -522,10 +539,11 @@ class TaskViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None):
         """Delete a task"""
         try:
-            task_id = pk
+            task_id = ObjectId(pk)
         except:
             return Response({"error": "Invalid task ID"}, status=status.HTTP_400_BAD_REQUEST)
-            
+        
+        print("[DEBUG] Connected to collection:", tasks_collection.full_name)
         task = tasks_collection.find_one({'_id': task_id})
         
         if not task:
