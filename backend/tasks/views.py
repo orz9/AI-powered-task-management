@@ -150,10 +150,6 @@ class TaskViewSet(viewsets.ViewSet):
                         'name': assigned_by.get('name', ''),
                         'role': assigned_by.get('role', '')
                     }
-                for person in people_collection.find():
-                    print(f"person: {person}")
-                print(f"assigned_by: {task['assigned_by']}")
-                print(f"assignee: {assignee}")
             
             if 'category' in task and task['category'] and isinstance(task['category'], ObjectId):
                 task['category'] = str(task['category'])
@@ -214,7 +210,6 @@ class TaskViewSet(viewsets.ViewSet):
                     task['team'] = str(task['team'])
             
             serializer = TaskSerializer(tasks, many=True)
-            print(serializer.data)
             return Response(serializer.data)
             
         except Exception as e:
