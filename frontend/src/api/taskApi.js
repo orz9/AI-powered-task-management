@@ -34,12 +34,11 @@ apiClient.interceptors.request.use(
 export const fetchTasks = async (userId, role) => {
   try {
     let endpoint;
-    
-    if (role === 'leader') {
-      endpoint = '/tasks/';
+    if (role === 'manager' || role === 'admin') {
+      endpoint = `/tasks`;
     } else {
       // If there's a 404 on /tasks/user/:id/, try alternative paths
-      endpoint = `/tasks/?assignedTo=${userId}`;
+      endpoint = `/tasks/user/${userId}`;
     }
     
     console.log(`Fetching tasks from: ${endpoint}`);

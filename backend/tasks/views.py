@@ -183,45 +183,38 @@ class TaskViewSet(viewsets.ViewSet):
             status_filter = request.query_params.get('status')
             if status_filter:
                 query['status'] = status_filter
-                
-            # Fetch tasks from MongoDB
-            tasks = list(tasks_collection.find(query).sort('created_at', -1))
             
+            # Get assignee and assigned_by details
+            assignee = people_collection.find_one({'userId': ObjectId(user_id)})
+            query['assigned_to'] = str(assignee.get('_id'))
+            if assignee:
+                tasks = list(tasks_collection.find(query).sort('created_at', -1))
+                
             # Process tasks for serialization
             for task in tasks:
                 task['_id'] = str(task['_id'])
-                
-                if 'assigned_to' in task and task['assigned_to']:
-                    task['assigned_to'] = str(task['assigned_to'])
-                    
-                    # Get assignee details
-                    try:
-                        assignee = people_collection.find_one({'_id': user_id})
-                        if assignee:
-                            task['assigned_to_details'] = {
-                                'id': str(assignee['_id']),
-                                'name': assignee.get('name', ''),
-                                'role': assignee.get('role', '')
-                            }
-                    except:
-                        pass
+
+                task['assigned_to_details'] = {
+                    'id': str(assignee['_id']),
+                    'name': assignee.get('name', ''),
+                    'role': assignee.get('role', '')
+                }
+
+                assigned_by = people_collection.find_one({'_id': ObjectId(task['assigned_by'])})
+                task['assigned_by_details'] = {
+                    'id': str(assigned_by['_id']),
+                    'name': assigned_by.get('name', ''),
+                    'role': assigned_by.get('role', '')
+                }
                     
                 if 'assigned_by' in task and task['assigned_by']:
                     task['assigned_by'] = str(task['assigned_by'])
                 
-                if 'category' in task and task['category']:
-                    task['category'] = str(task['category'])
-                
                 if 'team' in task and task['team']:
                     task['team'] = str(task['team'])
-                    
-                if 'related_tasks' in task and task['related_tasks']:
-                    task['related_tasks'] = [str(t) if isinstance(t, ObjectId) else t for t in task['related_tasks']]
-                
-                if 'blocking_tasks' in task and task['blocking_tasks']:
-                    task['blocking_tasks'] = [str(t) if isinstance(t, ObjectId) else t for t in task['blocking_tasks']]
             
             serializer = TaskSerializer(tasks, many=True)
+            print(serializer.data)
             return Response(serializer.data)
             
         except Exception as e:

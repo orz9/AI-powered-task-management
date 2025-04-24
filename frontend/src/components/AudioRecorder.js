@@ -227,7 +227,6 @@ const AudioRecorder = ({ userId, people: initialPeople }) => {
           source: 'audio'
         });
       }
-      console.log("debug: ", extractedTasks);
       
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);

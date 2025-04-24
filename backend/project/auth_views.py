@@ -295,13 +295,19 @@ class UserProfileView(APIView):
                 )
             
             # Fields that can be updated
-            allowed_fields = ['email', 'first_name', 'last_name', 'profile_picture', 'bio']
+            allowed_fields = ['_id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_superuser', 'role']
             update_data = {}
             
             # Validate and prepare update data
             for field in allowed_fields:
                 if field in request.data:
                     update_data[field] = request.data[field]
+            
+            update_data['_id'] = ObjectId(update_data['_id'])
+            
+            role_name = update_data['role']
+            if 'role' in allowed_fields and update_data['role']:
+                update_data['role'] = roles_collection.find_one({'name': update_data['role']}).get('_id')
             
             # Update Django user
             if 'email' in update_data:
@@ -323,23 +329,30 @@ class UserProfileView(APIView):
             # Get updated user data
             updated_user = users_collection.find_one({'_id': mongo_user['_id']})
             
-            # Get role info if available
-            role_name = None
-            if 'role' in updated_user and updated_user['role']:
-                role = roles_collection.find_one({'_id': updated_user['role']})
-                if role:
-                    role_name = role.get('name')
+            # Create person record linked to this user
+            person_data = {
+                'name': updated_user['first_name'] + ' ' + updated_user['username'],
+                'email': updated_user['email'],
+                'role': role_name
+            }
+        
+            # Add person to people collection
+            people_collection = settings.MONGODB_DB['people']
+            people_collection.update_one(
+                {'userId': updated_user['_id']},
+                {'$set': person_data}
+            )
             
             # Prepare response data
             response_data = {
+                'bio': '',
                 'id': str(updated_user['_id']),
                 'username': updated_user['username'],
                 'email': updated_user['email'],
-                'first_name': updated_user.get('first_name', ''),
-                'last_name': updated_user.get('last_name', ''),
+                'first_name': updated_user['first_name'],
+                'last_name': updated_user['last_name'],
                 'role': role_name,
-                'profile_picture': updated_user.get('profile_picture', None),
-                'bio': updated_user.get('bio', '')
+                'profile_picture': None
             }
             
             return Response(response_data)

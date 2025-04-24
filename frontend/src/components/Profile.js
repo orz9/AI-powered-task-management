@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, updateUserProfile, fetchRoles } from '../api/userApi';
 import { fetchTeams } from '../api/taskApi';
@@ -6,6 +6,7 @@ import { fetchTeams } from '../api/taskApi';
 const UserProfile = () => {
   const { currentUser } = useAuth();
   const [userData, setUserData] = useState(null);
+  const [formData, setFormData] = useState([]);
   const [teams, setTeams] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +23,8 @@ const UserProfile = () => {
         // Fetch user details
         const userData = await getUserProfile();
         setUserData(userData);
-        
+        setFormData(formatFormData(userData));
+
         // Fetch teams
         const teamsData = await fetchTeams();
         setTeams(teamsData);
@@ -30,7 +32,6 @@ const UserProfile = () => {
         // Fetch roles
         const rolesData = await fetchRoles();
         setRoles(rolesData);
-        console.log("debug roles: ", rolesData);
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Failed to load user data. Please refresh and try again.');
@@ -38,6 +39,7 @@ const UserProfile = () => {
         // Set current user as fallback if API fails
         if (currentUser) {
           setUserData(currentUser);
+          setFormData(formatFormData(userData));
         }
         
         // Set default teams and roles if API fails
@@ -58,18 +60,25 @@ const UserProfile = () => {
     
     fetchData();
   }, [currentUser]);
-  
-  useEffect(() => {
-    if (userData) {
-      console.log("debug user", userData);
+
+  const formatFormData = (userData) => {
+    return {
+      '_id': userData.id || '',
+      'username': userData.username || 'User',
+      'email': userData.email || '',
+      'first_name': userData.first_name || '',
+      'last_name': userData.last_name || '',
+      'role': userData.role || 'team_member',
+      'is_staff': userData.role === 'admin' || false,
+      'is_superuser': userData.role === 'admin' || false
     }
-  }, [userData])
+  }
 
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setUserData({
-      ...userData,
+    setFormData({
+      ...formData,
       [name]: value
     });
   };
@@ -87,18 +96,11 @@ const UserProfile = () => {
     setError('');
     
     try {
-      // Only team_member role can't change role and team
-      const isTeamMember = userData.role && userData.role === 'team_member';
-      
-      // If user is team_member, remove team and role from update data
-      const updateUser = userData;
-      
-      setUserData({
-        ...userData,
-        ...updateUser
-      });
+      const updatedData = await updateUserProfile(formData);
+      if (updatedData) {
+        setUserData(updatedData);
+      }
       setIsEditing(false);
-      
     } catch (err) {
       console.error('Error updating profile:', err);
       setError('Failed to update profile. Please try again.');
@@ -131,7 +133,7 @@ const UserProfile = () => {
   }
   
   // Determine if user can edit role and team
-  const canEditRoleAndTeam = userData.role && userData.role.permission_level > 1;
+  const canEditRoleAndTeam = userData.role && getPermissionLevel(userData.role) > 1;
   
   return (
     <div className="container">
@@ -157,7 +159,7 @@ const UserProfile = () => {
                     type="text"
                     id="first_name"
                     name="first_name"
-                    value={userData.first_name}
+                    value={formData.first_name}
                     onChange={handleChange}
                     required
                   />
@@ -169,7 +171,7 @@ const UserProfile = () => {
                     type="text"
                     id="last_name"
                     name="last_name"
-                    value={userData.last_name}
+                    value={formData.last_name}
                     onChange={handleChange}
                     required
                   />
@@ -182,7 +184,7 @@ const UserProfile = () => {
                   type="email"
                   id="email"
                   name="email"
-                  value={userData.email}
+                  value={formData.email}
                   onChange={handleChange}
                   required
                 />
@@ -194,7 +196,7 @@ const UserProfile = () => {
                   <select
                     id="team"
                     name="team"
-                    value={userData.team}
+                    value={formData.teams}
                     onChange={handleChange}
                     disabled={!canEditRoleAndTeam}
                   >
@@ -210,7 +212,7 @@ const UserProfile = () => {
                   <select
                     id="role"
                     name="role"
-                    value={userData.role}
+                    value={formData.role}
                     onChange={handleChange}
                     disabled={!canEditRoleAndTeam}
                   >
@@ -231,7 +233,10 @@ const UserProfile = () => {
                 <button 
                   type="button" 
                   className="cancel-btn"
-                  onClick={() => setIsEditing(false)}
+                  onClick= {() => {
+                    setIsEditing(false);
+                    setFormData(formatFormData(userData));
+                  }}
                 >
                   Cancel
                 </button>
