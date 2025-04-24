@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getUserProfile, fetchRoles } from '../api/userApi';
+import { getUserProfile, updateUserProfile, fetchRoles } from '../api/userApi';
 import { fetchTeams } from '../api/taskApi';
 
 const UserProfile = () => {
-  const { currentUser, updateProfile } = useAuth();
-  const [user, setUser] = useState(null);
+  const { currentUser } = useAuth();
+  const [userData, setUserData] = useState(null);
   const [teams, setTeams] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    team: '',
-    role: ''
-  });
   
   // Fetch user data, teams and roles
   useEffect(() => {
@@ -28,16 +21,7 @@ const UserProfile = () => {
       try {
         // Fetch user details
         const userData = await getUserProfile();
-        setUser(userData);
-        
-        // Set form data with user details
-        setFormData({
-          first_name: userData.first_name || '',
-          last_name: userData.last_name || '',
-          email: userData.email || '',
-          team: userData.team || '',
-          role: userData.role || ''
-        });
+        setUserData(userData);
         
         // Fetch teams
         const teamsData = await fetchTeams();
@@ -46,20 +30,14 @@ const UserProfile = () => {
         // Fetch roles
         const rolesData = await fetchRoles();
         setRoles(rolesData);
+        console.log("debug roles: ", rolesData);
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Failed to load user data. Please refresh and try again.');
         
         // Set current user as fallback if API fails
         if (currentUser) {
-          setUser(currentUser);
-          setFormData({
-            first_name: currentUser.first_name || '',
-            last_name: currentUser.last_name || '',
-            email: currentUser.email || '',
-            team: currentUser.team || '',
-            role: currentUser.role || ''
-          });
+          setUserData(currentUser);
         }
         
         // Set default teams and roles if API fails
@@ -81,14 +59,27 @@ const UserProfile = () => {
     fetchData();
   }, [currentUser]);
   
+  useEffect(() => {
+    if (userData) {
+      console.log("debug user", userData);
+    }
+  }, [userData])
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setUserData({
+      ...userData,
       [name]: value
     });
   };
+
+  const getPermissionLevel = (roleName) => {
+    if (!roleName) return '?';
+    if (roleName === 'team_member') return 1;
+    if (roleName === 'manager') return 3;
+    if (roleName === 'admin') return 4;
+  } 
   
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -97,25 +88,17 @@ const UserProfile = () => {
     
     try {
       // Only team_member role can't change role and team
-      const isTeamMember = user.role_name === 'team_member' || 
-                          (user.role && user.role.name === 'team_member');
+      const isTeamMember = userData.role && userData.role === 'team_member';
       
       // If user is team_member, remove team and role from update data
-      const updateData = { ...formData };
-      if (isTeamMember) {
-        delete updateData.team;
-        delete updateData.role;
-      }
+      const updateUser = userData;
       
-      const success = await updateProfile(updateData);
+      setUserData({
+        ...userData,
+        ...updateUser
+      });
+      setIsEditing(false);
       
-      if (success) {
-        setUser({
-          ...user,
-          ...updateData
-        });
-        setIsEditing(false);
-      }
     } catch (err) {
       console.error('Error updating profile:', err);
       setError('Failed to update profile. Please try again.');
@@ -133,7 +116,7 @@ const UserProfile = () => {
   }
   
   // Check if user exists
-  if (!user) {
+  if (!userData) {
     return (
       <div className="error-container">
         <div className="error-message">
@@ -148,8 +131,7 @@ const UserProfile = () => {
   }
   
   // Determine if user can edit role and team
-  const canEditRoleAndTeam = user.role_name !== 'team_member' || 
-                           (user.role && user.role.permission_level > 1);
+  const canEditRoleAndTeam = userData.role && userData.role.permission_level > 1;
   
   return (
     <div className="container">
@@ -175,7 +157,7 @@ const UserProfile = () => {
                     type="text"
                     id="first_name"
                     name="first_name"
-                    value={formData.first_name}
+                    value={userData.first_name}
                     onChange={handleChange}
                     required
                   />
@@ -187,7 +169,7 @@ const UserProfile = () => {
                     type="text"
                     id="last_name"
                     name="last_name"
-                    value={formData.last_name}
+                    value={userData.last_name}
                     onChange={handleChange}
                     required
                   />
@@ -200,7 +182,7 @@ const UserProfile = () => {
                   type="email"
                   id="email"
                   name="email"
-                  value={formData.email}
+                  value={userData.email}
                   onChange={handleChange}
                   required
                 />
@@ -212,16 +194,11 @@ const UserProfile = () => {
                   <select
                     id="team"
                     name="team"
-                    value={formData.team}
+                    value={userData.team}
                     onChange={handleChange}
                     disabled={!canEditRoleAndTeam}
                   >
                     <option value="">No Team</option>
-                    {teams.map(team => (
-                      <option key={team.id} value={team.id}>
-                        {team.name}
-                      </option>
-                    ))}
                   </select>
                   {!canEditRoleAndTeam && (
                     <p className="field-note">Only managers can change team assignments</p>
@@ -233,12 +210,12 @@ const UserProfile = () => {
                   <select
                     id="role"
                     name="role"
-                    value={formData.role}
+                    value={userData.role}
                     onChange={handleChange}
                     disabled={!canEditRoleAndTeam}
                   >
                     {roles.map(role => (
-                      <option key={role.id} value={role.id}>
+                      <option key={role.name} value={role.name}>
                         {role.name.charAt(0).toUpperCase() + role.name.slice(1)} (Level {role.permission_level})
                       </option>
                     ))}
@@ -263,13 +240,13 @@ const UserProfile = () => {
           ) : (
             <div className="profile-details">
               <div className="profile-avatar">
-                {user.profile_picture ? (
-                  <img src={user.profile_picture} alt={`${user.first_name} ${user.last_name}`} />
-                ) : (
-                  <div className="avatar-placeholder">
-                    {user.first_name ? user.first_name.charAt(0) : ''}{user.last_name ? user.last_name.charAt(0) : ''}
-                  </div>
-                )}
+              {userData.profile_picture ? (
+                <img src={userData.profile_picture} alt={`${userData.first_name} ${userData.last_name}`} className="user-avatar" />
+              ) : (
+                <div className="profile-avatar-placeholder">
+                  {userData.username.charAt(0).toUpperCase()}
+                </div>
+              )}
               </div>
               
               <div className="profile-section">
@@ -277,16 +254,16 @@ const UserProfile = () => {
                 <div className="detail-row">
                   <span className="detail-label">Name:</span>
                   <span className="detail-value">
-                    {user.first_name} {user.last_name}
+                    {userData.first_name} {userData.last_name}
                   </span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Username:</span>
-                  <span className="detail-value">{user.username}</span>
+                  <span className="detail-value">{userData.username}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Email:</span>
-                  <span className="detail-value">{user.email}</span>
+                  <span className="detail-value">{userData.email}</span>
                 </div>
               </div>
               
@@ -295,38 +272,23 @@ const UserProfile = () => {
                 <div className="detail-row">
                   <span className="detail-label">Role:</span>
                   <span className="detail-value role-badge">
-                    {user.role_name ? user.role_name.charAt(0).toUpperCase() + user.role_name.slice(1) : 'Unknown'}
+                    {userData.role ? userData.role.charAt(0).toUpperCase() + userData.role.slice(1) : 'Unknown'}
                   </span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Authority Level:</span>
                   <span className="detail-value">
-                    Level {user.role?.permission_level || 'Unknown'}
+                    Level {userData.role ? getPermissionLevel(userData.role) : 'Unknown'}
                   </span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Team:</span>
                   <span className="detail-value team-badge">
-                    {user.team_name || 'No Team'}
+                    {userData.team_name || 'No Team'}
                   </span>
                 </div>
               </div>
               
-              <div className="profile-section">
-                <h3>Account Information</h3>
-                <div className="detail-row">
-                  <span className="detail-label">Member Since:</span>
-                  <span className="detail-value">
-                    {new Date(user.created_at || user.date_joined).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Last Login:</span>
-                  <span className="detail-value">
-                    {user.last_login ? new Date(user.last_login).toLocaleString() : 'Unknown'}
-                  </span>
-                </div>
-              </div>
             </div>
           )}
         </div>

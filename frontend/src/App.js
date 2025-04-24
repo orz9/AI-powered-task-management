@@ -10,6 +10,7 @@ import CreateTaskForm from './components/CreateTaskForm';
 import Navigation from './components/Navigation';
 import TaskList from './components/TaskList';
 import PeopleList from './components/PeopleList';
+import UserProfile from './components/Profile';
 
 // CSS
 import './styles/App.css';
@@ -92,6 +93,16 @@ const AppRoutes = () => {
             </PrivateLayout>
           </PrivateRoute>
         } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <PrivateRoute>
+            <PrivateLayout>
+              <UserProfile />
+            </PrivateLayout>
+          </PrivateRoute>
+        }
       />
       <Route path="/" element={<Navigate to="/dashboard" />} />
       {/* <Route path="*" element={<div className="not-found">Page not found</div>} /> */}
