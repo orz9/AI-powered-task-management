@@ -196,7 +196,7 @@ const CreateTaskForm = ({ people: initialPeople, teams, onTaskCreated }) => {
             >
               <option value="">None</option>
               {teams?.map(team => (
-                <option key={team.id} value={team.id}>
+                <option key={team._id} value={team.name}>
                   {team.name}
                 </option>
               ))}
