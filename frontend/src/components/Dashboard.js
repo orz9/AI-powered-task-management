@@ -26,7 +26,7 @@ const Dashboard = () => {
   const fetchTeams = async () => {
     try {
       // This would be your actual API call
-      const response = await fetch('/api/teams', {
+      const response = await fetch(`${API_BASE_URL}/teams`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

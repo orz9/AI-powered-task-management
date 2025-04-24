@@ -1,11 +1,36 @@
-import React, { useState } from 'react';
-import { fetchPersonDetails } from '../api/taskApi';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const PeopleList = ({ people }) => {
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
+const PeopleList = () => {
+  const [people, setPeople] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Fetch people directly from API
+  useEffect(() => {
+    const fetchPeople = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        // First try to get people from API
+        const response = await axios.get(`${API_BASE_URL}/people/`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log("People data from API:", response.data);
+          setPeople(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching people:', err);
+      }
+    };
+
+    fetchPeople();
+  }, []);
+
   // Load person details when clicked
   const handlePersonClick = async (personId) => {
     // If clicking the same person, toggle the selection off
@@ -18,8 +43,15 @@ const PeopleList = ({ people }) => {
     setError(null);
     
     try {
-      const personDetails = await fetchPersonDetails(personId);
-      setSelectedPerson(personDetails);
+      var selected = null;
+      for (const person of people) {
+        if (person.id === personId) {
+          selected = person;
+        }
+      }
+      if (selected) {
+        setSelectedPerson(selected);
+      }
     } catch (err) {
       console.error('Error fetching person details:', err);
       setError('Failed to load person details. Please try again.');
@@ -48,21 +80,11 @@ const PeopleList = ({ people }) => {
     return color;
   };
   
-  // Get initials from name
-  const getInitials = (name) => {
-    if (!name) return '?';
-    
-    const nameParts = name.split(' ');
-    if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
-    
-    return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
-  };
-  
   // Render person card with initials avatar
   const renderPersonCard = (person) => {
     const isSelected = selectedPerson && selectedPerson.id === person.id;
     const avatarColor = generateAvatarColor(person.name);
-    const initials = getInitials(person.name);
+    const initials = person.name.charAt(0).toUpperCase();
     
     return (
       <div 

@@ -1171,6 +1171,96 @@
     flex: 1;
   }
   
+  .user-profile-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+  
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .profile-header h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .edit-profile-btn {
+    background-color: #4a64f5;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .edit-profile-btn:hover {
+    background-color: #3a4be0;
+  }
+  
+  .profile-avatar {
+    display: flex;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+  
+  .profile-avatar-placeholder {
+    background-color: #4a64f5;
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }  
+  
+  .profile-section {
+    margin-top: 2rem;
+  }
+  
+  .profile-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: #444;
+  }
+  
+  .detail-row {
+    display: flex;
+    margin-bottom: 0.75rem;
+  }
+  
+  .detail-label {
+    width: 160px;
+    font-weight: 600;
+    color: #555;
+  }
+  
+  .detail-value {
+    color: #333;
+  }
+  
+  .role-badge,
+  .team-badge {
+    background-color: #eaf0ff;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    color: #3a4be0;
+    font-weight: 500;
+  }
+  
+
   /* Responsive Adjustments */
   @media (max-width: 768px) {
     .form-row {

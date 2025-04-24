@@ -35,16 +35,6 @@ const Navigation = () => {
     return location.pathname === path;
   };
 
-  // Get initials from name
-  const getInitials = (name) => {
-    if (!name) return '?';
-    
-    const nameParts = name.split(' ');
-    if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
-    
-    return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
-  };
-
   return (
     <nav className="main-navigation">
       <div className="nav-container">
@@ -123,7 +113,7 @@ const Navigation = () => {
               />
             ) : (
               <div className="user-avatar-placeholder">
-                {getInitials(currentUser.name || currentUser.username)}
+                {currentUser.username.charAt(0).toUpperCase()}
               </div>
             )}
             <span className="user-name">{currentUser.name || currentUser.username}</span>
