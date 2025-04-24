@@ -54,9 +54,6 @@ const TaskList = ({ tasks: initialTasks }) => {
     // Log the task to see its structure
     console.log("Editing task:", task);
     
-    // Ensure we have the correct ID format
-    const taskId = task._id || task.id;
-    
     // Normalize the date format for the form
     let dueDateFormatted = "";
     if (task.dueDate || task.due_date) {
@@ -68,7 +65,7 @@ const TaskList = ({ tasks: initialTasks }) => {
     
     // Normalize field names to ensure form has the right fields
     const normalizedTask = {
-      id: taskId,
+      id: task._id,
       title: task.title || "",
       description: task.description || "",
       status: task.status || "todo",
@@ -76,7 +73,7 @@ const TaskList = ({ tasks: initialTasks }) => {
       dueDate: dueDateFormatted
     };
     
-    setEditingTaskId(taskId);
+    setEditingTaskId(task._id);
     setEditFormData(normalizedTask);
   };
 
