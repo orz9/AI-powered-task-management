@@ -180,7 +180,7 @@ export const fetchPeople = async (userId, role) => {
  */
 export const fetchPersonDetails = async (personId) => {
   try {
-    const response = await apiClient.get(`/people/${personId}/`);
+    const response = await apiClient.get(`${API_BASE_URL}/people/${personId}/`);
     return response.data;
   } catch (error) {
     console.error('Error fetching person details:', error);
